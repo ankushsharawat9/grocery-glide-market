@@ -4,6 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Heart, Star, ShoppingCart, Plus, Minus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Link } from 'react-router-dom';
+import { useCart } from '@/hooks/useCart';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 interface Product {
   id: number;
@@ -25,18 +29,30 @@ interface ProductCardProps {
 export const ProductCard = ({ product }: ProductCardProps) => {
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [isInCart, setIsInCart] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { addToCart } = useCart();
+  const { user } = useAuth();
 
-  const handleAddToCart = () => {
-    setIsInCart(true);
-    // Add to cart logic here
-    console.log(`Added ${quantity} of ${product.name} to cart`);
+  const handleAddToCart = async () => {
+    if (!user) {
+      toast.error('Please log in to add items to cart');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await addToCart(product.id.toString(), quantity);
+      setQuantity(1); // Reset quantity after adding
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleWishlistToggle = () => {
     setIsWishlisted(!isWishlisted);
-    // Wishlist logic here
-    console.log(`${isWishlisted ? 'Removed from' : 'Added to'} wishlist: ${product.name}`);
+    toast.success(`${isWishlisted ? 'Removed from' : 'Added to'} wishlist`);
   };
 
   return (
@@ -48,11 +64,13 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       )}
       
       <div className="relative">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-        />
+        <Link to={`/product/${product.id}`}>
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        </Link>
         <Button
           variant="ghost"
           size="icon"
@@ -68,9 +86,11 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           <Badge variant="secondary" className="text-xs">
             {product.category}
           </Badge>
-          <h3 className="font-semibold text-gray-900 line-clamp-2">
-            {product.name}
-          </h3>
+          <Link to={`/product/${product.id}`}>
+            <h3 className="font-semibold text-gray-900 line-clamp-2 hover:text-primary transition-colors">
+              {product.name}
+            </h3>
+          </Link>
           
           <div className="flex items-center space-x-1">
             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -116,11 +136,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             <Button
               size="sm"
               onClick={handleAddToCart}
-              disabled={!product.inStock}
-              className={isInCart ? 'bg-green-600 hover:bg-green-700' : ''}
+              disabled={!product.inStock || loading}
             >
               <ShoppingCart className="h-4 w-4 mr-1" />
-              {isInCart ? 'Added' : 'Add'}
+              {loading ? 'Adding...' : 'Add'}
             </Button>
           </div>
           

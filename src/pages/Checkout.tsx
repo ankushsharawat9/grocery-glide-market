@@ -69,6 +69,13 @@ const Checkout = () => {
       return;
     }
 
+    // Validate shipping address
+    if (!shippingAddress.firstName || !shippingAddress.lastName || !shippingAddress.address || 
+        !shippingAddress.city || !shippingAddress.state || !shippingAddress.zipCode) {
+      toast.error('Please fill in all shipping address fields');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -84,10 +91,10 @@ const Checkout = () => {
 
       // Redirect to Stripe Checkout
       const stripe = await loadStripe(
-        'pk_test_51OqJ8mGYrR4zM5OY7Q9Z8V9mX4cP5H8V9mX4cP5H8V9mX4cP5H8V9mX4cP5H8'
+        'pk_test_51RgAg44KVMTKWMkReIJvTqCjTtIlQAKQaJOzrOQWALDmgKxGF2RjCnGNW5hUFCVGSFmhGgbOqmTNXrGzLPqFPE9j00lMnvE8Pm'
       );
 
-      if (stripe) {
+      if (stripe && data.sessionId) {
         await stripe.redirectToCheckout({
           sessionId: data.sessionId,
         });
@@ -138,7 +145,7 @@ const Checkout = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName">First Name *</Label>
                   <Input
                     id="firstName"
                     name="firstName"
@@ -148,7 +155,7 @@ const Checkout = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName">Last Name *</Label>
                   <Input
                     id="lastName"
                     name="lastName"
@@ -160,7 +167,7 @@ const Checkout = () => {
               </div>
               
               <div>
-                <Label htmlFor="address">Address</Label>
+                <Label htmlFor="address">Address *</Label>
                 <Input
                   id="address"
                   name="address"
@@ -172,7 +179,7 @@ const Checkout = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="city">City</Label>
+                  <Label htmlFor="city">City *</Label>
                   <Input
                     id="city"
                     name="city"
@@ -182,7 +189,7 @@ const Checkout = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="state">State</Label>
+                  <Label htmlFor="state">State *</Label>
                   <Input
                     id="state"
                     name="state"
@@ -194,7 +201,7 @@ const Checkout = () => {
               </div>
               
               <div>
-                <Label htmlFor="zipCode">ZIP Code</Label>
+                <Label htmlFor="zipCode">ZIP Code *</Label>
                 <Input
                   id="zipCode"
                   name="zipCode"
