@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { loadStripe } from '@stripe/stripe-js';
 
 const Checkout = () => {
   const [searchParams] = useSearchParams();
@@ -82,13 +83,12 @@ const Checkout = () => {
       if (error) throw error;
 
       // Redirect to Stripe Checkout
-      const stripe = await import('@stripe/stripe-js');
-      const stripeInstance = await stripe.loadStripe(
+      const stripe = await loadStripe(
         'pk_test_51OqJ8mGYrR4zM5OY7Q9Z8V9mX4cP5H8V9mX4cP5H8V9mX4cP5H8V9mX4cP5H8'
       );
 
-      if (stripeInstance) {
-        await stripeInstance.redirectToCheckout({
+      if (stripe) {
+        await stripe.redirectToCheckout({
           sessionId: data.sessionId,
         });
       }
