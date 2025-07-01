@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
@@ -7,85 +7,69 @@ import { ProductCard } from '@/components/ProductCard';
 import { CategoryFilter } from '@/components/CategoryFilter';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-// Mock products data
-const allProducts = [
-  {
-    id: 1,
-    name: "Fresh Organic Bananas",
-    price: 2.99,
-    originalPrice: 3.99,
-    image: "/placeholder.svg",
-    rating: 4.8,
-    reviews: 124,
-    discount: 25,
-    inStock: true,
-    category: "Fruits"
-  },
-  {
-    id: 2,
-    name: "Premium Tomatoes",
-    price: 4.49,
-    originalPrice: 5.99,
-    image: "/placeholder.svg",
-    rating: 4.6,
-    reviews: 89,
-    discount: 25,
-    inStock: true,
-    category: "Vegetables"
-  },
-  {
-    id: 3,
-    name: "Whole Wheat Bread",
-    price: 3.99,
-    image: "/placeholder.svg",
-    rating: 4.7,
-    reviews: 156,
-    inStock: true,
-    category: "Bakery"
-  },
-  {
-    id: 4,
-    name: "Farm Fresh Eggs",
-    price: 5.99,
-    image: "/placeholder.svg",
-    rating: 4.9,
-    reviews: 203,
-    inStock: true,
-    category: "Dairy"
-  },
-  {
-    id: 5,
-    name: "Organic Apples",
-    price: 3.49,
-    image: "/placeholder.svg",
-    rating: 4.5,
-    reviews: 78,
-    inStock: true,
-    category: "Fruits"
-  },
-  {
-    id: 6,
-    name: "Fresh Spinach",
-    price: 2.99,
-    image: "/placeholder.svg",
-    rating: 4.3,
-    reviews: 45,
-    inStock: true,
-    category: "Vegetables"
-  },
-];
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  original_price: number | null;
+  image_url: string | null;
+  rating: number | null;
+  reviews_count: number | null;
+  discount_percentage: number | null;
+  in_stock: boolean | null;
+  category: string;
+}
 
 const Products = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredProducts, setFilteredProducts] = useState(allProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setProducts(data || []);
+      setFilteredProducts(data || []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast.error('Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   const handleSearch = () => {
-    const filtered = allProducts.filter(product =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const filtered = products.filter(product =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchQuery.toLowerCase())
     );
     setFilteredProducts(filtered);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">Loading products...</div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -114,9 +98,28 @@ const Products = () => {
           <div className="flex-1">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard 
+                  key={product.id} 
+                  product={{
+                    id: parseInt(product.id),
+                    name: product.name,
+                    price: product.price,
+                    originalPrice: product.original_price,
+                    image: product.image_url || '/placeholder.svg',
+                    rating: product.rating || 0,
+                    reviews: product.reviews_count || 0,
+                    discount: product.discount_percentage || 0,
+                    inStock: product.in_stock || false,
+                    category: product.category
+                  }} 
+                />
               ))}
             </div>
+            {filteredProducts.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No products found matching your search.
+              </div>
+            )}
           </div>
         </div>
       </div>
