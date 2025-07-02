@@ -10,9 +10,24 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 
+interface Order {
+  id: string;
+  status: string;
+  total_amount: string | number;
+  created_at: string;
+  order_items?: Array<{
+    id: string;
+    quantity: number;
+    product: {
+      id: string;
+      name: string;
+    };
+  }>;
+}
+
 const Dashboard = () => {
   const { user } = useAuth();
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState({
     totalOrders: 0,
     pendingOrders: 0,
@@ -42,13 +57,14 @@ const Dashboard = () => {
 
       if (error) throw error;
 
-      setOrders(data || []);
+      const typedOrders: Order[] = data || [];
+      setOrders(typedOrders);
       
       // Calculate stats
-      const totalOrders = data?.length || 0;
-      const pendingOrders = data?.filter(order => order.status === 'pending').length || 0;
-      const completedOrders = data?.filter(order => order.status === 'paid').length || 0;
-      const totalSpent = data?.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0) || 0;
+      const totalOrders = typedOrders.length;
+      const pendingOrders = typedOrders.filter(order => order.status === 'pending').length;
+      const completedOrders = typedOrders.filter(order => order.status === 'paid').length;
+      const totalSpent = typedOrders.reduce((sum, order) => sum + parseFloat(String(order.total_amount) || '0'), 0);
 
       setStats({
         totalOrders,
@@ -157,7 +173,7 @@ const Dashboard = () => {
                   <div key={order.id} className="border rounded-lg p-4">
                     <div className="flex justify-between items-center mb-2">
                       <div>
-                        <p className="font-semibold">Order #{String(order.id).slice(0, 8)}</p>
+                        <p className="font-semibold">Order #{order.id.slice(0, 8)}</p>
                         <p className="text-sm text-gray-600">
                           {new Date(order.created_at).toLocaleDateString()}
                         </p>
@@ -166,7 +182,7 @@ const Dashboard = () => {
                         <Badge variant={order.status === 'paid' ? 'default' : 'secondary'}>
                           {order.status}
                         </Badge>
-                        <p className="font-bold mt-1">${parseFloat(order.total_amount).toFixed(2)}</p>
+                        <p className="font-bold mt-1">${parseFloat(String(order.total_amount)).toFixed(2)}</p>
                       </div>
                     </div>
                     {order.order_items && (
