@@ -1,63 +1,80 @@
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingBag, Heart, MapPin, User, Package, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ShoppingBag, Package, Clock, CheckCircle } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
-  const user = {
-    name: "John Doe",
-    email: "john@example.com",
-    joinDate: "January 2024"
-  };
+  const { user } = useAuth();
+  const [orders, setOrders] = useState([]);
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    pendingOrders: 0,
+    completedOrders: 0,
+    totalSpent: 0
+  });
 
-  const recentOrders = [
-    {
-      id: "ORD-001",
-      date: "2024-01-15",
-      status: "Delivered",
-      total: 45.99,
-      items: 5
-    },
-    {
-      id: "ORD-002",
-      date: "2024-01-12",
-      status: "In Transit",
-      total: 32.50,
-      items: 3
-    },
-    {
-      id: "ORD-003",
-      date: "2024-01-08",
-      status: "Processing",
-      total: 67.25,
-      items: 8
+  useEffect(() => {
+    if (user) {
+      fetchOrders();
     }
-  ];
+  }, [user]);
 
-  const stats = {
-    totalOrders: 15,
-    totalSpent: 524.75,
-    wishlistItems: 12,
-    savedAddresses: 2
-  };
+  const fetchOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            *,
+            product:products (*)
+          )
+        `)
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Delivered':
-        return 'bg-green-500';
-      case 'In Transit':
-        return 'bg-blue-500';
-      case 'Processing':
-        return 'bg-yellow-500';
-      default:
-        return 'bg-gray-500';
+      if (error) throw error;
+
+      setOrders(data || []);
+      
+      // Calculate stats
+      const totalOrders = data?.length || 0;
+      const pendingOrders = data?.filter(order => order.status === 'pending').length || 0;
+      const completedOrders = data?.filter(order => order.status === 'paid').length || 0;
+      const totalSpent = data?.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0) || 0;
+
+      setStats({
+        totalOrders,
+        pendingOrders,
+        completedOrders,
+        totalSpent
+      });
+    } catch (error) {
+      console.error('Error fetching orders:', error);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-16 text-center">
+          <h1 className="text-3xl font-bold mb-4">Please log in to view your dashboard</h1>
+          <Link to="/login">
+            <Button size="lg">Sign In</Button>
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -65,16 +82,16 @@ const Dashboard = () => {
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome back, {user.name}!</h1>
-          <p className="text-gray-600">Member since {user.joinDate}</p>
+          <h1 className="text-3xl font-bold mb-2">Welcome back, {user.user_metadata?.first_name || 'User'}!</h1>
+          <p className="text-gray-600">Here's an overview of your account</p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <Package className="h-8 w-8 text-blue-600" />
+                <ShoppingBag className="h-8 w-8 text-blue-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Orders</p>
                   <p className="text-2xl font-bold">{stats.totalOrders}</p>
@@ -86,112 +103,83 @@ const Dashboard = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <ShoppingBag className="h-8 w-8 text-green-600" />
+                <Clock className="h-8 w-8 text-yellow-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Pending</p>
+                  <p className="text-2xl font-bold">{stats.pendingOrders}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Completed</p>
+                  <p className="text-2xl font-bold">{stats.completedOrders}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <Package className="h-8 w-8 text-purple-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Spent</p>
-                  <p className="text-2xl font-bold">${stats.totalSpent}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Heart className="h-8 w-8 text-red-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Wishlist Items</p>
-                  <p className="text-2xl font-bold">{stats.wishlistItems}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <MapPin className="h-8 w-8 text-purple-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Saved Addresses</p>
-                  <p className="text-2xl font-bold">{stats.savedAddresses}</p>
+                  <p className="text-2xl font-bold">${stats.totalSpent.toFixed(2)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Recent Orders */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Recent Orders</CardTitle>
-                <Link to="/orders">
-                  <Button variant="outline" size="sm">View All</Button>
+        {/* Recent Orders */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {orders.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                <p className="text-gray-600 mb-4">No orders yet</p>
+                <Link to="/products">
+                  <Button>Start Shopping</Button>
                 </Link>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentOrders.map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex-shrink-0">
-                          <Clock className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{order.id}</p>
-                          <p className="text-sm text-gray-600">{order.date}</p>
-                          <p className="text-sm text-gray-600">{order.items} items</p>
-                        </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {orders.slice(0, 5).map((order) => (
+                  <div key={order.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <div>
+                        <p className="font-semibold">Order #{order.id.slice(0, 8)}</p>
+                        <p className="text-sm text-gray-600">
+                          {new Date(order.created_at).toLocaleDateString()}
+                        </p>
                       </div>
                       <div className="text-right">
-                        <Badge className={getStatusColor(order.status)}>
+                        <Badge variant={order.status === 'paid' ? 'default' : 'secondary'}>
                           {order.status}
                         </Badge>
-                        <p className="font-bold mt-1">${order.total}</p>
+                        <p className="font-bold mt-1">${parseFloat(order.total_amount).toFixed(2)}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Quick Actions */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Link to="/orders">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Package className="h-4 w-4 mr-2" />
-                    View Orders
-                  </Button>
-                </Link>
-                <Link to="/wishlist">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Heart className="h-4 w-4 mr-2" />
-                    My Wishlist
-                  </Button>
-                </Link>
-                <Link to="/profile">
-                  <Button variant="outline" className="w-full justify-start">
-                    <User className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                </Link>
-                <Link to="/addresses">
-                  <Button variant="outline" className="w-full justify-start">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    Manage Addresses
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+                    {order.order_items && (
+                      <div className="text-sm text-gray-600">
+                        {order.order_items.length} item(s)
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
       
       <Footer />

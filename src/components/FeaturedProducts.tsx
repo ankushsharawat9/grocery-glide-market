@@ -1,69 +1,67 @@
 
-import { ProductCard } from '@/components/ProductCard';
-
-// Mock data for featured products
-const featuredProducts = [
-  {
-    id: 1,
-    name: "Fresh Organic Bananas",
-    price: 2.99,
-    originalPrice: 3.99,
-    image: "/placeholder.svg",
-    rating: 4.8,
-    reviews: 124,
-    discount: 25,
-    inStock: true,
-    category: "Fruits"
-  },
-  {
-    id: 2,
-    name: "Premium Tomatoes",
-    price: 4.49,
-    originalPrice: 5.99,
-    image: "/placeholder.svg",
-    rating: 4.6,
-    reviews: 89,
-    discount: 25,
-    inStock: true,
-    category: "Vegetables"
-  },
-  {
-    id: 3,
-    name: "Whole Wheat Bread",
-    price: 3.99,
-    image: "/placeholder.svg",
-    rating: 4.7,
-    reviews: 156,
-    inStock: true,
-    category: "Bakery"
-  },
-  {
-    id: 4,
-    name: "Farm Fresh Eggs",
-    price: 5.99,
-    image: "/placeholder.svg",
-    rating: 4.9,
-    reviews: 203,
-    inStock: true,
-    category: "Dairy"
-  }
-];
+import { useState, useEffect } from 'react';
+import { ProductCard } from './ProductCard';
+import { supabase } from '@/integrations/supabase/client';
 
 export const FeaturedProducts = () => {
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeaturedProducts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .limit(8);
+        
+        if (error) throw error;
+        
+        if (data) {
+          setFeaturedProducts(data.map(product => ({
+            id: parseInt(product.id),
+            name: product.name,
+            price: product.price,
+            originalPrice: product.original_price,
+            image: product.image_url || '/placeholder.svg',
+            rating: product.rating || 4.5,
+            reviews: product.reviews_count || 0,
+            discount: product.discount_percentage || 0,
+            inStock: product.in_stock !== false,
+            category: product.category
+          })));
+        }
+      } catch (error) {
+        console.error('Error fetching featured products:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeaturedProducts();
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-12">Featured Products</h2>
+          <div className="text-center">Loading featured products...</div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-4 py-16">
-      <div className="text-center mb-12">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">Featured Products</h2>
-        <p className="text-gray-600 max-w-2xl mx-auto">
-          Discover our hand-picked selection of the freshest and highest quality products
-        </p>
+    <section className="py-16 bg-gray-50">
+      <div className="container mx-auto px-4">
+        <h2 className="text-3xl font-bold text-center mb-12">Featured Products</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {featuredProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
       </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {featuredProducts.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
-    </div>
+    </section>
   );
 };

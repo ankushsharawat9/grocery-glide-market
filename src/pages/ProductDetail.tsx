@@ -1,67 +1,118 @@
 
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Star, Heart, ShoppingCart, Plus, Minus } from 'lucide-react';
+import { Star, Heart, ShoppingCart, Plus, Minus, ArrowLeft } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { useCart } from '@/hooks/useCart';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const ProductDetail = () => {
   const { id } = useParams();
+  const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const { addToCart } = useCart();
+  const { user } = useAuth();
 
-  // Mock product data
-  const product = {
-    id: 1,
-    name: "Fresh Organic Bananas",
-    price: 2.99,
-    originalPrice: 3.99,
-    images: ["/placeholder.svg", "/placeholder.svg", "/placeholder.svg"],
-    rating: 4.8,
-    reviews: 124,
-    discount: 25,
-    inStock: true,
-    category: "Fruits",
-    description: "Premium quality organic bananas, perfectly ripe and sweet. Rich in potassium and natural sugars, these bananas are perfect for smoothies, baking, or eating fresh.",
-    nutritionalInfo: "High in Potassium, Vitamin B6, Vitamin C",
-    origin: "Ecuador",
-    weight: "1 lb"
+  useEffect(() => {
+    if (id) {
+      fetchProduct();
+    }
+  }, [id]);
+
+  const fetchProduct = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      setProduct(data);
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      toast.error('Product not found');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAddToCart = () => {
-    console.log(`Added ${quantity} of ${product.name} to cart`);
+  const handleAddToCart = async () => {
+    if (!user) {
+      toast.error('Please log in to add items to cart');
+      return;
+    }
+
+    try {
+      await addToCart(id, quantity);
+      setQuantity(1);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    }
   };
+
+  const handleWishlistToggle = () => {
+    setIsWishlisted(!isWishlisted);
+    toast.success(`${isWishlisted ? 'Removed from' : 'Added to'} wishlist`);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">Loading product...</div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8 text-center">
+          <h1 className="text-2xl font-bold mb-4">Product not found</h1>
+          <Link to="/products">
+            <Button>Browse Products</Button>
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Link to="/products">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Products
+            </Button>
+          </Link>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Product Images */}
+          {/* Product Image */}
           <div className="space-y-4">
             <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
               <img
-                src={product.images[selectedImage]}
+                src={product.image_url || '/placeholder.svg'}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
-            </div>
-            <div className="flex gap-2">
-              {product.images.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`w-20 h-20 rounded-lg overflow-hidden border-2 ${
-                    selectedImage === index ? 'border-primary' : 'border-gray-200'
-                  }`}
-                >
-                  <img src={image} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
             </div>
           </div>
 
@@ -78,7 +129,7 @@ const ProductDetail = () => {
                 <div className="flex items-center">
                   <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
                   <span className="ml-1 text-sm text-gray-600">
-                    {product.rating} ({product.reviews} reviews)
+                    {product.rating || 4.5} ({product.reviews_count || 0} reviews)
                   </span>
                 </div>
               </div>
@@ -88,26 +139,27 @@ const ProductDetail = () => {
               <span className="text-3xl font-bold text-gray-900">
                 ${product.price}
               </span>
-              {product.originalPrice && (
+              {product.original_price && (
                 <span className="text-xl text-gray-500 line-through">
-                  ${product.originalPrice}
+                  ${product.original_price}
                 </span>
               )}
-              {product.discount && (
+              {product.discount_percentage && (
                 <Badge className="bg-red-500">
-                  -{product.discount}%
+                  -{product.discount_percentage}%
                 </Badge>
               )}
             </div>
 
-            <p className="text-gray-600 leading-relaxed">
-              {product.description}
-            </p>
+            {product.description && (
+              <p className="text-gray-600 leading-relaxed">
+                {product.description}
+              </p>
+            )}
 
             <div className="space-y-2">
-              <p><strong>Origin:</strong> {product.origin}</p>
-              <p><strong>Weight:</strong> {product.weight}</p>
-              <p><strong>Nutritional Info:</strong> {product.nutritionalInfo}</p>
+              <p><strong>Stock:</strong> {product.stock_quantity || 'Available'}</p>
+              <p><strong>Category:</strong> {product.category}</p>
             </div>
 
             <div className="border-t pt-6 space-y-4">
@@ -139,7 +191,7 @@ const ProductDetail = () => {
                   className="flex-1"
                   size="lg"
                   onClick={handleAddToCart}
-                  disabled={!product.inStock}
+                  disabled={!product.in_stock}
                 >
                   <ShoppingCart className="h-5 w-5 mr-2" />
                   Add to Cart
@@ -147,13 +199,13 @@ const ProductDetail = () => {
                 <Button
                   variant="outline"
                   size="lg"
-                  onClick={() => setIsWishlisted(!isWishlisted)}
+                  onClick={handleWishlistToggle}
                 >
                   <Heart className={`h-5 w-5 ${isWishlisted ? 'fill-current text-red-500' : ''}`} />
                 </Button>
               </div>
 
-              {!product.inStock && (
+              {!product.in_stock && (
                 <Badge variant="destructive" className="w-full justify-center text-center">
                   Out of Stock
                 </Badge>
