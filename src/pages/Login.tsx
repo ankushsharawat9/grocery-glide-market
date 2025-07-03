@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -16,18 +15,28 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, user } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  if (user) {
+    console.log('User already logged in, redirecting to home');
+    navigate('/');
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    console.log('Form submitted for email:', email);
 
     try {
       await signIn(email, password);
       toast.success('Welcome back!');
+      console.log('Login successful, navigating to home');
       navigate('/');
     } catch (error: any) {
+      console.error('Login failed:', error);
       toast.error(error.message || 'Failed to sign in');
     } finally {
       setLoading(false);
@@ -36,10 +45,12 @@ const Login = () => {
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
+    console.log('Google sign in button clicked');
     try {
       await signInWithGoogle();
       // Note: The redirect will happen automatically
     } catch (error: any) {
+      console.error('Google sign in failed:', error);
       toast.error(error.message || 'Failed to sign in with Google');
       setGoogleLoading(false);
     }
