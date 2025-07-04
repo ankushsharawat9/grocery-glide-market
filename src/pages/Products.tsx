@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { ProductCard } from '@/components/ProductCard';
 import { CategoryFilter } from '@/components/CategoryFilter';
+import { SearchResults } from '@/components/SearchResults';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useSearchParams } from 'react-router-dom';
 
 interface Product {
   id: string;
@@ -24,11 +26,14 @@ interface Product {
 }
 
 const Products = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const initialSearch = searchParams.get('search') || '';
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [showSearchResults, setShowSearchResults] = useState(!!initialSearch);
 
   const fetchProducts = async () => {
     try {
@@ -71,15 +76,21 @@ const Products = () => {
     }
 
     setFilteredProducts(filtered);
+    setShowSearchResults(!!searchQuery.trim());
   }, [products, searchQuery, selectedCategory]);
 
   const handleSearch = () => {
-    // Search is now handled automatically via useEffect
     console.log('Search triggered for:', searchQuery);
+    setShowSearchResults(!!searchQuery.trim());
   };
 
   const handleCategoryFilter = (category: string) => {
     setSelectedCategory(category);
+    // Clear search when selecting category
+    if (category !== 'All') {
+      setSearchQuery('');
+      setShowSearchResults(false);
+    }
   };
 
   if (loading) {
@@ -100,7 +111,9 @@ const Products = () => {
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-4">All Products ({filteredProducts.length})</h1>
+          <h1 className="text-3xl font-bold mb-4">
+            {showSearchResults ? `Search Results (${filteredProducts.length})` : `All Products (${filteredProducts.length})`}
+          </h1>
           <div className="flex gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -119,28 +132,32 @@ const Products = () => {
         <div className="flex gap-8">
           <CategoryFilter onCategorySelect={handleCategoryFilter} selectedCategory={selectedCategory} />
           <div className="flex-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProducts.map((product) => (
-                <ProductCard 
-                  key={product.id} 
-                  product={{
-                    id: parseInt(product.id),
-                    name: product.name,
-                    price: product.price,
-                    originalPrice: product.original_price,
-                    image: product.image_url || '/placeholder.svg',
-                    rating: product.rating || 0,
-                    reviews: product.reviews_count || 0,
-                    discount: product.discount_percentage || 0,
-                    inStock: product.in_stock || false,
-                    category: product.category
-                  }} 
-                />
-              ))}
-            </div>
+            {showSearchResults ? (
+              <SearchResults searchQuery={searchQuery} category={selectedCategory} />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProducts.map((product) => (
+                  <ProductCard 
+                    key={product.id} 
+                    product={{
+                      id: parseInt(product.id),
+                      name: product.name,
+                      price: product.price,
+                      originalPrice: product.original_price,
+                      image: product.image_url || '/placeholder.svg',
+                      rating: product.rating || 0,
+                      reviews: product.reviews_count || 0,
+                      discount: product.discount_percentage || 0,
+                      inStock: product.in_stock || false,
+                      category: product.category
+                    }} 
+                  />
+                ))}
+              </div>
+            )}
             {filteredProducts.length === 0 && (
               <div className="text-center py-8 text-gray-500">
-                No products found matching your search criteria.
+                {searchQuery ? 'No products found matching your search criteria.' : 'No products available.'}
               </div>
             )}
           </div>

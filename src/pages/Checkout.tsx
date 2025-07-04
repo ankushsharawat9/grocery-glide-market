@@ -1,153 +1,153 @@
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
 import { loadStripe } from '@stripe/stripe-js';
 
+const stripePromise = loadStripe('pk_test_51234567890'); // Replace with your Stripe publishable key
+
 const Checkout = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, total, clearCart } = useCart();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [shippingAddress, setShippingAddress] = useState({
+  const [formData, setFormData] = useState({
+    email: user?.email || '',
     firstName: '',
     lastName: '',
     address: '',
     city: '',
     state: '',
     zipCode: '',
-    country: 'US'
+    phone: ''
   });
 
   useEffect(() => {
-    // Handle successful payment
-    if (searchParams.get('success') === 'true') {
-      const sessionId = searchParams.get('session_id');
-      if (sessionId) {
-        handleSuccessfulPayment(sessionId);
-      }
-    }
-
-    // Handle canceled payment
-    if (searchParams.get('canceled') === 'true') {
-      toast.error('Payment was canceled');
-    }
-  }, [searchParams]);
-
-  const handleSuccessfulPayment = async (sessionId: string) => {
-    try {
-      // Clear the cart after successful payment
-      await clearCart();
-      toast.success('Order placed successfully!');
-      navigate(`/order-success?session_id=${sessionId}`);
-    } catch (error) {
-      console.error('Error handling successful payment:', error);
-      toast.error('Order completed but failed to clear cart');
-    }
-  };
-
-  const handleCheckout = async () => {
     if (!user) {
-      toast.error('Please log in to continue');
       navigate('/login');
       return;
     }
-
+    
     if (items.length === 0) {
-      toast.error('Your cart is empty');
+      navigate('/cart');
       return;
     }
+  }, [user, items, navigate]);
 
-    // Validate shipping address
-    if (!shippingAddress.firstName || !shippingAddress.lastName || !shippingAddress.address || 
-        !shippingAddress.city || !shippingAddress.state || !shippingAddress.zipCode) {
-      toast.error('Please fill in all shipping address fields');
-      return;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const validateForm = () => {
+    const required = ['firstName', 'lastName', 'address', 'city', 'state', 'zipCode', 'phone'];
+    const missing = required.filter(field => !formData[field].trim());
+    
+    if (missing.length > 0) {
+      toast.error(`Please fill in all required fields: ${missing.join(', ')}`);
+      return false;
     }
+    
+    return true;
+  };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
     setLoading(true);
-
+    
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: {
-          items,
-          shipping_address: shippingAddress,
-          billing_address: shippingAddress, // Using same address for billing
+      // Create order in database
+      const orderData = {
+        user_id: user?.id,
+        total_amount: total,
+        status: 'pending',
+        shipping_address: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          phone: formData.phone
         },
-      });
+        billing_address: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          phone: formData.phone
+        }
+      };
 
-      if (error) throw error;
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select()
+        .single();
 
-      // Redirect to Stripe Checkout
-      const stripe = await loadStripe(
-        'pk_test_51RgAg44KVMTKWMkReIJvTqCjTtIlQAKQaJOzrOQWALDmgKxGF2RjCnGNW5hUFCVGSFmhGgbOqmTNXrGzLPqFPE9j00lMnvE8Pm'
-      );
+      if (orderError) throw orderError;
 
-      if (stripe && data.sessionId) {
-        await stripe.redirectToCheckout({
-          sessionId: data.sessionId,
-        });
-      }
-    } catch (error: any) {
+      // Create order items
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        product_id: item.id.toString(),
+        quantity: item.quantity,
+        price: item.price
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      // In a real app, you would integrate with Stripe here
+      // For demo purposes, we'll simulate a successful payment
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ 
+          status: 'paid',
+          stripe_session_id: `demo_${order.id}` 
+        })
+        .eq('id', order.id);
+
+      if (updateError) throw updateError;
+
+      // Clear cart and redirect to success page
+      await clearCart();
+      toast.success('Order placed successfully!');
+      navigate(`/order-success?session_id=demo_${order.id}`);
+
+    } catch (error) {
       console.error('Checkout error:', error);
-      toast.error(error.message || 'Failed to create checkout session');
+      toast.error('Failed to process order. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setShippingAddress(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-  };
-
-  const subtotal = totalPrice;
-  const tax = subtotal * 0.08; // 8% tax
+  const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const shipping = subtotal > 50 ? 0 : 5.99;
-  const total = subtotal + tax + shipping;
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Please log in to checkout</h1>
-            <Button onClick={() => navigate('/login')}>Go to Login</Button>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (items.length === 0) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Your cart is empty</h1>
-            <Button onClick={() => navigate('/products')}>Continue Shopping</Button>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
+  const tax = subtotal * 0.08; // 8% tax
+  const finalTotal = subtotal + shipping + tax;
 
   return (
     <div className="min-h-screen bg-background">
@@ -157,146 +157,163 @@ const Checkout = () => {
         <h1 className="text-3xl font-bold mb-8">Checkout</h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Shipping Information */}
+          {/* Checkout Form */}
           <Card>
             <CardHeader>
               <CardTitle>Shipping Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name *</Label>
+                    <Input
+                      id="firstName"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Input
+                      id="lastName"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+                
                 <div>
-                  <Label htmlFor="firstName">First Name *</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="firstName"
-                    name="firstName"
-                    value={shippingAddress.firstName}
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    disabled
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="address">Address *</Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    value={formData.address}
                     onChange={handleInputChange}
                     required
                   />
                 </div>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="city">City *</Label>
+                    <Input
+                      id="city"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="state">State *</Label>
+                    <Input
+                      id="state"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="zipCode">ZIP Code *</Label>
+                    <Input
+                      id="zipCode"
+                      name="zipCode"
+                      value={formData.zipCode}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+                
                 <div>
-                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Label htmlFor="phone">Phone *</Label>
                   <Input
-                    id="lastName"
-                    name="lastName"
-                    value={shippingAddress.lastName}
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    value={formData.phone}
                     onChange={handleInputChange}
                     required
                   />
                 </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="address">Address *</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  value={shippingAddress.address}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="city">City *</Label>
-                  <Input
-                    id="city"
-                    name="city"
-                    value={shippingAddress.city}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="state">State *</Label>
-                  <Input
-                    id="state"
-                    name="state"
-                    value={shippingAddress.state}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="zipCode">ZIP Code *</Label>
-                <Input
-                  id="zipCode"
-                  name="zipCode"
-                  value={shippingAddress.zipCode}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  size="lg"
+                  disabled={loading}
+                >
+                  {loading ? 'Processing...' : `Place Order - $${finalTotal.toFixed(2)}`}
+                </Button>
+              </form>
             </CardContent>
           </Card>
-
+          
           {/* Order Summary */}
           <Card>
             <CardHeader>
               <CardTitle>Order Summary</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={item.product.image_url || '/placeholder.svg'}
-                        alt={item.product.name}
-                        className="w-10 h-10 object-cover rounded"
-                      />
-                      <div>
-                        <p className="font-medium text-sm">{item.product.name}</p>
-                        <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
-                      </div>
-                    </div>
-                    <p className="font-medium">
-                      ${(item.product.price * item.quantity).toFixed(2)}
-                    </p>
+            <CardContent className="space-y-4">
+              {items.map((item) => (
+                <div key={item.id} className="flex justify-between items-center">
+                  <div className="flex-1">
+                    <h4 className="font-medium">{item.name}</h4>
+                    <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
                   </div>
-                ))}
-                
-                <Separator />
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                  <div className="font-medium">
+                    ${(item.price * item.quantity).toFixed(2)}
                   </div>
-                  <div className="flex justify-between">
-                    <span>Tax</span>
-                    <span>${tax.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Shipping</span>
-                    <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
-                  </div>
-                  {shipping > 0 && (
-                    <p className="text-xs text-gray-600">
-                      Free shipping on orders over $50
-                    </p>
-                  )}
                 </div>
-
-                <Separator />
-                
-                <div className="flex justify-between items-center text-lg font-bold">
-                  <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+              ))}
+              
+              <Separator />
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>${subtotal.toFixed(2)}</span>
                 </div>
-                
-                <Button 
-                  className="w-full" 
-                  size="lg" 
-                  onClick={handleCheckout}
-                  disabled={loading || items.length === 0}
-                >
-                  {loading ? 'Processing...' : `Place Order - $${total.toFixed(2)}`}
-                </Button>
+                <div className="flex justify-between">
+                  <span>Shipping</span>
+                  <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tax</span>
+                  <span>${tax.toFixed(2)}</span>
+                </div>
               </div>
+              
+              <Separator />
+              
+              <div className="flex justify-between text-lg font-bold">
+                <span>Total</span>
+                <span>${finalTotal.toFixed(2)}</span>
+              </div>
+              
+              {subtotal < 50 && (
+                <p className="text-sm text-gray-600">
+                  Add ${(50 - subtotal).toFixed(2)} more for free shipping!
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

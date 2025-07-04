@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { ProductCard } from '@/components/ProductCard';
-import { CategoryFilter } from '@/components/CategoryFilter';
 import { FeaturedProducts } from '@/components/FeaturedProducts';
 import { HeroSection } from '@/components/HeroSection';
 import { Navbar } from '@/components/Navbar';

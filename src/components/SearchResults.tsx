@@ -8,13 +8,29 @@ interface SearchResultsProps {
   category?: string;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  original_price: number | null;
+  image_url: string | null;
+  rating: number | null;
+  reviews_count: number | null;
+  discount_percentage: number | null;
+  in_stock: boolean | null;
+  category: string;
+}
+
 export const SearchResults = ({ searchQuery, category }: SearchResultsProps) => {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const searchProducts = async () => {
-      if (!searchQuery.trim()) return;
+      if (!searchQuery.trim()) {
+        setProducts([]);
+        return;
+      }
 
       setLoading(true);
       try {
@@ -31,20 +47,10 @@ export const SearchResults = ({ searchQuery, category }: SearchResultsProps) => 
 
         if (error) throw error;
 
-        setProducts(data?.map(product => ({
-          id: parseInt(product.id),
-          name: product.name,
-          price: product.price,
-          originalPrice: product.original_price,
-          image: product.image_url || '/placeholder.svg',
-          rating: product.rating || 0,
-          reviews: product.reviews_count || 0,
-          discount: product.discount_percentage || 0,
-          inStock: product.in_stock || false,
-          category: product.category
-        })) || []);
+        setProducts(data || []);
       } catch (error) {
         console.error('Search error:', error);
+        setProducts([]);
       } finally {
         setLoading(false);
       }
@@ -63,12 +69,23 @@ export const SearchResults = ({ searchQuery, category }: SearchResultsProps) => 
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">
-        Search Results for "{searchQuery}" ({products.length} found)
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
+          <ProductCard 
+            key={product.id} 
+            product={{
+              id: parseInt(product.id),
+              name: product.name,
+              price: product.price,
+              originalPrice: product.original_price,
+              image: product.image_url || '/placeholder.svg',
+              rating: product.rating || 0,
+              reviews: product.reviews_count || 0,
+              discount: product.discount_percentage || 0,
+              inStock: product.in_stock || false,
+              category: product.category
+            }} 
+          />
         ))}
       </div>
       {products.length === 0 && (

@@ -11,6 +11,7 @@ interface CategoryFilterProps {
 
 export const CategoryFilter = ({ onCategorySelect, selectedCategory }: CategoryFilterProps) => {
   const [categories, setCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -22,9 +23,11 @@ export const CategoryFilter = ({ onCategorySelect, selectedCategory }: CategoryF
         if (error) throw error;
         
         const uniqueCategories = [...new Set(data?.map(item => item.category) || [])];
-        setCategories(uniqueCategories);
+        setCategories(uniqueCategories.sort());
       } catch (error) {
         console.error('Error fetching categories:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -34,6 +37,23 @@ export const CategoryFilter = ({ onCategorySelect, selectedCategory }: CategoryF
   const handleCategoryClick = (category: string) => {
     onCategorySelect?.(category);
   };
+
+  if (loading) {
+    return (
+      <Card className="w-64 h-fit">
+        <CardHeader>
+          <CardTitle>Categories</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse space-y-2">
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-64 h-fit">
