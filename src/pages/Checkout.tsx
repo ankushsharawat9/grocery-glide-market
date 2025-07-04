@@ -17,7 +17,7 @@ import { loadStripe } from '@stripe/stripe-js';
 const stripePromise = loadStripe('pk_test_51234567890'); // Replace with your Stripe publishable key
 
 const Checkout = () => {
-  const { items, total, clearCart } = useCart();
+  const { items, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -75,7 +75,7 @@ const Checkout = () => {
       // Create order in database
       const orderData = {
         user_id: user?.id,
-        total_amount: total,
+        total_amount: totalPrice,
         status: 'pending',
         shipping_address: {
           firstName: formData.firstName,
@@ -108,9 +108,9 @@ const Checkout = () => {
       // Create order items
       const orderItems = items.map(item => ({
         order_id: order.id,
-        product_id: item.id.toString(),
+        product_id: item.product.id,
         quantity: item.quantity,
-        price: item.price
+        price: item.product.price
       }));
 
       const { error: itemsError } = await supabase
@@ -144,7 +144,7 @@ const Checkout = () => {
     }
   };
 
-  const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   const shipping = subtotal > 50 ? 0 : 5.99;
   const tax = subtotal * 0.08; // 8% tax
   const finalTotal = subtotal + shipping + tax;
@@ -276,11 +276,11 @@ const Checkout = () => {
               {items.map((item) => (
                 <div key={item.id} className="flex justify-between items-center">
                   <div className="flex-1">
-                    <h4 className="font-medium">{item.name}</h4>
+                    <h4 className="font-medium">{item.product.name}</h4>
                     <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
                   </div>
                   <div className="font-medium">
-                    ${(item.price * item.quantity).toFixed(2)}
+                    ${(item.product.price * item.quantity).toFixed(2)}
                   </div>
                 </div>
               ))}
