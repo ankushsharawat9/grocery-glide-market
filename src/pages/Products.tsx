@@ -28,6 +28,7 @@ const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   const fetchProducts = async () => {
     try {
@@ -51,12 +52,34 @@ const Products = () => {
     fetchProducts();
   }, []);
 
-  const handleSearch = () => {
-    const filtered = products.filter(product =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+  useEffect(() => {
+    let filtered = products;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.category.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Filter by category
+    if (selectedCategory && selectedCategory !== 'All') {
+      filtered = filtered.filter(product =>
+        product.category.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+
     setFilteredProducts(filtered);
+  }, [products, searchQuery, selectedCategory]);
+
+  const handleSearch = () => {
+    // Search is now handled automatically via useEffect
+    console.log('Search triggered for:', searchQuery);
+  };
+
+  const handleCategoryFilter = (category: string) => {
+    setSelectedCategory(category);
   };
 
   if (loading) {
@@ -77,7 +100,7 @@ const Products = () => {
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-4">All Products</h1>
+          <h1 className="text-3xl font-bold mb-4">All Products ({filteredProducts.length})</h1>
           <div className="flex gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -94,7 +117,7 @@ const Products = () => {
         </div>
         
         <div className="flex gap-8">
-          <CategoryFilter />
+          <CategoryFilter onCategorySelect={handleCategoryFilter} selectedCategory={selectedCategory} />
           <div className="flex-1">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducts.map((product) => (
@@ -117,7 +140,7 @@ const Products = () => {
             </div>
             {filteredProducts.length === 0 && (
               <div className="text-center py-8 text-gray-500">
-                No products found matching your search.
+                No products found matching your search criteria.
               </div>
             )}
           </div>

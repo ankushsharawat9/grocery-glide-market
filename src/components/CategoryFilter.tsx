@@ -1,42 +1,63 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
 
-const categories = [
-  'All Categories',
-  'Fruits',
-  'Vegetables',
-  'Dairy',
-  'Meat',
-  'Bakery',
-  'Beverages',
-  'Snacks',
-  'Frozen',
-  'Pantry'
-];
+interface CategoryFilterProps {
+  onCategorySelect?: (category: string) => void;
+  selectedCategory?: string;
+}
 
-export const CategoryFilter = () => {
-  const [selectedCategory, setSelectedCategory] = useState('All Categories');
+export const CategoryFilter = ({ onCategorySelect, selectedCategory }: CategoryFilterProps) => {
+  const [categories, setCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('category');
+
+        if (error) throw error;
+        
+        const uniqueCategories = [...new Set(data?.map(item => item.category) || [])];
+        setCategories(uniqueCategories);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  const handleCategoryClick = (category: string) => {
+    onCategorySelect?.(category);
+  };
 
   return (
-    <Card className="w-64">
+    <Card className="w-64 h-fit">
       <CardHeader>
-        <CardTitle className="text-lg">Categories</CardTitle>
+        <CardTitle>Categories</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {categories.map((category) => (
-            <Button
-              key={category}
-              variant={selectedCategory === category ? "default" : "ghost"}
-              className="w-full justify-start"
-              onClick={() => setSelectedCategory(category)}
-            >
-              {category}
-            </Button>
-          ))}
-        </div>
+      <CardContent className="space-y-2">
+        <Button
+          variant={selectedCategory === '' || selectedCategory === 'All' ? 'default' : 'outline'}
+          className="w-full justify-start"
+          onClick={() => handleCategoryClick('All')}
+        >
+          All Products
+        </Button>
+        {categories.map((category) => (
+          <Button
+            key={category}
+            variant={selectedCategory === category ? 'default' : 'outline'}
+            className="w-full justify-start"
+            onClick={() => handleCategoryClick(category)}
+          >
+            {category}
+          </Button>
+        ))}
       </CardContent>
     </Card>
   );

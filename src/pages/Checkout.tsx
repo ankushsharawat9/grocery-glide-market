@@ -50,7 +50,7 @@ const Checkout = () => {
       // Clear the cart after successful payment
       await clearCart();
       toast.success('Order placed successfully!');
-      navigate('/dashboard');
+      navigate(`/order-success?session_id=${sessionId}`);
     } catch (error) {
       console.error('Error handling successful payment:', error);
       toast.error('Order completed but failed to clear cart');
@@ -114,6 +114,11 @@ const Checkout = () => {
     }));
   };
 
+  const subtotal = totalPrice;
+  const tax = subtotal * 0.08; // 8% tax
+  const shipping = subtotal > 50 ? 0 : 5.99;
+  const total = subtotal + tax + shipping;
+
   if (!user) {
     return (
       <div className="min-h-screen bg-background">
@@ -122,6 +127,21 @@ const Checkout = () => {
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Please log in to checkout</h1>
             <Button onClick={() => navigate('/login')}>Go to Login</Button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Your cart is empty</h1>
+            <Button onClick={() => navigate('/products')}>Continue Shopping</Button>
           </div>
         </div>
         <Footer />
@@ -222,9 +242,16 @@ const Checkout = () => {
               <div className="space-y-4">
                 {items.map((item) => (
                   <div key={item.id} className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">{item.product.name}</p>
-                      <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={item.product.image_url || '/placeholder.svg'}
+                        alt={item.product.name}
+                        className="w-10 h-10 object-cover rounded"
+                      />
+                      <div>
+                        <p className="font-medium text-sm">{item.product.name}</p>
+                        <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
+                      </div>
                     </div>
                     <p className="font-medium">
                       ${(item.product.price * item.quantity).toFixed(2)}
@@ -234,9 +261,31 @@ const Checkout = () => {
                 
                 <Separator />
                 
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>${subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tax</span>
+                    <span>${tax.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Shipping</span>
+                    <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+                  </div>
+                  {shipping > 0 && (
+                    <p className="text-xs text-gray-600">
+                      Free shipping on orders over $50
+                    </p>
+                  )}
+                </div>
+
+                <Separator />
+                
                 <div className="flex justify-between items-center text-lg font-bold">
                   <span>Total</span>
-                  <span>${totalPrice.toFixed(2)}</span>
+                  <span>${total.toFixed(2)}</span>
                 </div>
                 
                 <Button 
@@ -245,7 +294,7 @@ const Checkout = () => {
                   onClick={handleCheckout}
                   disabled={loading || items.length === 0}
                 >
-                  {loading ? 'Processing...' : `Pay $${totalPrice.toFixed(2)}`}
+                  {loading ? 'Processing...' : `Place Order - $${total.toFixed(2)}`}
                 </Button>
               </div>
             </CardContent>
