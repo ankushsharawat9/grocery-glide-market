@@ -42,6 +42,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
     setLoading(true);
     try {
+      console.log('Fetching cart items for user:', user.id);
       const { data, error } = await supabase
         .from('cart_items')
         .select(`
@@ -50,7 +51,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         `)
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching cart items:', error);
+        throw error;
+      }
+      
+      console.log('Cart items fetched:', data);
       setItems(data || []);
     } catch (error) {
       console.error('Error fetching cart items:', error);
@@ -70,23 +76,56 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('cart_items')
-        .upsert({
-          user_id: user.id,
-          product_id: productId,
-          quantity
-        }, {
-          onConflict: 'user_id,product_id'
-        });
+    console.log('Adding to cart:', { productId, quantity, userId: user.id });
 
-      if (error) throw error;
+    try {
+      // Check if item already exists in cart
+      const { data: existingItem, error: fetchError } = await supabase
+        .from('cart_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('product_id', productId)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error checking existing cart item:', fetchError);
+        throw fetchError;
+      }
+
+      if (existingItem) {
+        // Update existing item quantity
+        const newQuantity = existingItem.quantity + quantity;
+        const { error: updateError } = await supabase
+          .from('cart_items')
+          .update({ quantity: newQuantity })
+          .eq('id', existingItem.id);
+
+        if (updateError) {
+          console.error('Error updating cart item:', updateError);
+          throw updateError;
+        }
+      } else {
+        // Insert new item
+        const { error: insertError } = await supabase
+          .from('cart_items')
+          .insert({
+            user_id: user.id,
+            product_id: productId,
+            quantity: quantity
+          });
+
+        if (insertError) {
+          console.error('Error inserting cart item:', insertError);
+          throw insertError;
+        }
+      }
+
       await fetchCartItems();
       toast.success('Item added to cart');
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast.error('Failed to add item to cart');
+      throw error;
     }
   };
 

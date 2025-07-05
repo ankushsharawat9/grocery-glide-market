@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface Product {
-  id: number;
+  id: string; // Changed from number to string to match database
   name: string;
   price: number;
   originalPrice?: number;
@@ -41,10 +41,12 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
     setLoading(true);
     try {
-      await addToCart(product.id.toString(), quantity);
+      console.log('Adding to cart:', { productId: product.id, quantity });
+      await addToCart(product.id, quantity);
       setQuantity(1); // Reset quantity after adding
     } catch (error) {
       console.error('Error adding to cart:', error);
+      toast.error('Failed to add item to cart');
     } finally {
       setLoading(false);
     }

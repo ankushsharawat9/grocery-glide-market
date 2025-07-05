@@ -51,6 +51,7 @@ const ProductDetail = () => {
     }
 
     try {
+      console.log('Adding product to cart:', { productId: id, quantity });
       await addToCart(id, quantity);
       setQuantity(1);
     } catch (error) {
