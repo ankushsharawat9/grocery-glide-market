@@ -32,41 +32,45 @@ serve(async (req) => {
       )
     }
 
-    const { items, shipping_address, billing_address } = await req.json()
+    const { items, shipping_address, billing_address, total_amount } = await req.json()
 
-    // Create Stripe checkout session
-    const stripe = new (await import('https://esm.sh/stripe@12.18.0')).default(
-      Deno.env.get('STRIPE_SECRET_KEY') ?? '',
-      { apiVersion: '2023-10-16' }
-    )
-
-    const line_items = items.map((item: any) => ({
-      price_data: {
-        currency: 'usd',
-        product_data: {
-          name: item.product.name,
-          images: item.product.image_url ? [item.product.image_url] : [],
-        },
-        unit_amount: Math.round(item.product.price * 100),
-      },
-      quantity: item.quantity,
-    }))
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items,
-      mode: 'payment',
-      success_url: `${req.headers.get('origin')}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get('origin')}/checkout?canceled=true`,
-      metadata: {
+    // Create Razorpay order
+    const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID') ?? ''
+    const razorpayKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET') ?? ''
+    
+    const orderData = {
+      amount: Math.round(total_amount * 100), // Amount in paise
+      currency: 'INR',
+      receipt: `order_${Date.now()}`,
+      notes: {
         user_id: user.id,
         shipping_address: JSON.stringify(shipping_address),
         billing_address: JSON.stringify(billing_address),
+      }
+    }
+
+    const response = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${btoa(`${razorpayKeyId}:${razorpayKeySecret}`)}`
       },
+      body: JSON.stringify(orderData)
     })
 
+    if (!response.ok) {
+      throw new Error('Failed to create Razorpay order')
+    }
+
+    const razorpayOrder = await response.json()
+
     return new Response(
-      JSON.stringify({ sessionId: session.id }),
+      JSON.stringify({ 
+        orderId: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        keyId: razorpayKeyId
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

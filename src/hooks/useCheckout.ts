@@ -17,6 +17,12 @@ interface FormData {
   phone: string;
 }
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 export const useCheckout = () => {
   const { items, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
@@ -53,6 +59,16 @@ export const useCheckout = () => {
     return true;
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -61,10 +77,53 @@ export const useCheckout = () => {
     setLoading(true);
     
     try {
-      // Create order in database
+      // Load Razorpay script
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Failed to load Razorpay SDK');
+      }
+
+      // Calculate total with shipping and tax
+      const subtotal = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+      const shipping = subtotal > 50 ? 0 : 5.99;
+      const tax = subtotal * 0.08;
+      const finalTotal = subtotal + shipping + tax;
+
+      // Create Razorpay order
+      const { data: razorpayData, error: razorpayError } = await supabase.functions.invoke(
+        'create-checkout-session',
+        {
+          body: {
+            items,
+            shipping_address: {
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              address: formData.address,
+              city: formData.city,
+              state: formData.state,
+              zipCode: formData.zipCode,
+              phone: formData.phone
+            },
+            billing_address: {
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              address: formData.address,
+              city: formData.city,
+              state: formData.state,
+              zipCode: formData.zipCode,
+              phone: formData.phone
+            },
+            total_amount: finalTotal
+          }
+        }
+      );
+
+      if (razorpayError) throw razorpayError;
+
+      // Create order in database first
       const orderData = {
         user_id: user?.id,
-        total_amount: totalPrice,
+        total_amount: finalTotal,
         status: 'pending',
         shipping_address: {
           firstName: formData.firstName,
@@ -108,27 +167,60 @@ export const useCheckout = () => {
 
       if (itemsError) throw itemsError;
 
-      // In a real app, you would integrate with Stripe here
-      // For demo purposes, we'll simulate a successful payment
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ 
-          status: 'paid',
-          stripe_session_id: `demo_${order.id}` 
-        })
-        .eq('id', order.id);
+      // Configure Razorpay options
+      const options = {
+        key: razorpayData.keyId,
+        amount: razorpayData.amount,
+        currency: razorpayData.currency,
+        name: 'Your Store',
+        description: 'Order Payment',
+        order_id: razorpayData.orderId,
+        handler: async function (response: any) {
+          try {
+            // Update order status to paid
+            const { error: updateError } = await supabase
+              .from('orders')
+              .update({ 
+                status: 'paid',
+                stripe_session_id: response.razorpay_payment_id 
+              })
+              .eq('id', order.id);
 
-      if (updateError) throw updateError;
+            if (updateError) throw updateError;
 
-      // Clear cart and redirect to success page
-      await clearCart();
-      toast.success('Order placed successfully!');
-      navigate(`/order-success?session_id=demo_${order.id}`);
+            // Clear cart and redirect to success page
+            await clearCart();
+            toast.success('Payment successful!');
+            navigate(`/order-success?session_id=${response.razorpay_payment_id}`);
+          } catch (error) {
+            console.error('Payment confirmation error:', error);
+            toast.error('Payment completed but order update failed. Please contact support.');
+          }
+        },
+        prefill: {
+          name: `${formData.firstName} ${formData.lastName}`,
+          email: formData.email,
+          contact: formData.phone
+        },
+        notes: {
+          address: formData.address
+        },
+        theme: {
+          color: '#3399cc'
+        },
+        modal: {
+          ondismiss: function() {
+            setLoading(false);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
 
     } catch (error) {
       console.error('Checkout error:', error);
       toast.error('Failed to process order. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
