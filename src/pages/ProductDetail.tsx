@@ -91,6 +91,10 @@ const ProductDetail = () => {
     );
   }
 
+  // Convert prices to rupees
+  const priceInr = product.price * 83;
+  const originalPriceInr = product.original_price ? product.original_price * 83 : null;
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -138,11 +142,11 @@ const ProductDetail = () => {
 
             <div className="flex items-center gap-4">
               <span className="text-3xl font-bold text-gray-900">
-                ${product.price}
+                ₹{priceInr.toFixed(2)}
               </span>
-              {product.original_price && (
+              {originalPriceInr && (
                 <span className="text-xl text-gray-500 line-through">
-                  ${product.original_price}
+                  ₹{originalPriceInr.toFixed(2)}
                 </span>
               )}
               {product.discount_percentage && (

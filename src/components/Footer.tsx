@@ -35,10 +35,10 @@ export const Footer = () => {
           <div>
             <h4 className="text-lg font-semibold mb-4">Customer Service</h4>
             <ul className="space-y-2">
-              <li><Link to="#" className="text-gray-400 hover:text-white">Help Center</Link></li>
-              <li><Link to="#" className="text-gray-400 hover:text-white">Contact Us</Link></li>
-              <li><Link to="#" className="text-gray-400 hover:text-white">Delivery Info</Link></li>
-              <li><Link to="#" className="text-gray-400 hover:text-white">Returns</Link></li>
+              <li><Link to="/help-center" className="text-gray-400 hover:text-white">Help Center</Link></li>
+              <li><Link to="/contact-us" className="text-gray-400 hover:text-white">Contact Us</Link></li>
+              <li><Link to="/delivery-info" className="text-gray-400 hover:text-white">Delivery Info</Link></li>
+              <li><Link to="/returns" className="text-gray-400 hover:text-white">Returns</Link></li>
             </ul>
           </div>
 
@@ -48,7 +48,7 @@ export const Footer = () => {
             <div className="space-y-2">
               <div className="flex items-center text-gray-400">
                 <Phone className="h-4 w-4 mr-2" />
-                <span>+1 (555) 123-4567</span>
+                <span>+91 1800-123-4567</span>
               </div>
               <div className="flex items-center text-gray-400">
                 <Mail className="h-4 w-4 mr-2" />

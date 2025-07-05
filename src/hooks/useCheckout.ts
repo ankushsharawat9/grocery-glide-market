@@ -28,6 +28,7 @@ export const useCheckout = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'cod'>('online');
   const [formData, setFormData] = useState<FormData>({
     email: user?.email || '',
     firstName: '',
@@ -39,12 +40,35 @@ export const useCheckout = () => {
     phone: ''
   });
 
+  // Load saved address on component mount
+  useState(() => {
+    const savedAddress = localStorage.getItem('savedAddress');
+    if (savedAddress) {
+      const parsed = JSON.parse(savedAddress);
+      setFormData(prev => ({ ...prev, ...parsed }));
+    }
+  });
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+  };
+
+  const saveAddress = () => {
+    const addressData = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
+      zipCode: formData.zipCode,
+      phone: formData.phone
+    };
+    localStorage.setItem('savedAddress', JSON.stringify(addressData));
+    toast.success('Address saved for future orders');
   };
 
   const validateForm = () => {
@@ -69,6 +93,57 @@ export const useCheckout = () => {
     });
   };
 
+  const createOrder = async (finalTotal: number) => {
+    const orderData = {
+      user_id: user?.id,
+      total_amount: finalTotal,
+      status: paymentMethod === 'cod' ? 'pending' : 'pending',
+      payment_method: paymentMethod === 'cod' ? 'cod' : 'online',
+      shipping_address: {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        phone: formData.phone
+      },
+      billing_address: {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        phone: formData.phone
+      }
+    };
+
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert([orderData])
+      .select()
+      .single();
+
+    if (orderError) throw orderError;
+
+    // Create order items
+    const orderItems = items.map(item => ({
+      order_id: order.id,
+      product_id: item.product.id,
+      quantity: item.quantity,
+      price: item.product.price * 83 // Convert to rupees
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems);
+
+    if (itemsError) throw itemsError;
+
+    return order;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -77,17 +152,28 @@ export const useCheckout = () => {
     setLoading(true);
     
     try {
-      // Load Razorpay script
+      // Calculate total with shipping and tax in rupees
+      const subtotal = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+      const subtotalInr = subtotal * 83; // Convert to rupees
+      const shipping = subtotalInr > 500 ? 0 : 50; // ₹50 shipping, free above ₹500
+      const tax = subtotalInr * 0.08; // 8% tax
+      const finalTotal = subtotalInr + shipping + tax;
+
+      const order = await createOrder(finalTotal);
+
+      if (paymentMethod === 'cod') {
+        // COD order - just clear cart and redirect
+        await clearCart();
+        toast.success('Order placed successfully! You can pay on delivery.');
+        navigate(`/order-success?order_id=${order.id}`);
+        return;
+      }
+
+      // Online payment with Razorpay
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         throw new Error('Failed to load Razorpay SDK');
       }
-
-      // Calculate total with shipping and tax
-      const subtotal = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-      const shipping = subtotal > 50 ? 0 : 5.99;
-      const tax = subtotal * 0.08;
-      const finalTotal = subtotal + shipping + tax;
 
       // Create Razorpay order
       const { data: razorpayData, error: razorpayError } = await supabase.functions.invoke(
@@ -120,59 +206,12 @@ export const useCheckout = () => {
 
       if (razorpayError) throw razorpayError;
 
-      // Create order in database first
-      const orderData = {
-        user_id: user?.id,
-        total_amount: finalTotal,
-        status: 'pending',
-        shipping_address: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
-          phone: formData.phone
-        },
-        billing_address: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
-          phone: formData.phone
-        }
-      };
-
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert([orderData])
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Create order items
-      const orderItems = items.map(item => ({
-        order_id: order.id,
-        product_id: item.product.id,
-        quantity: item.quantity,
-        price: item.product.price
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
       // Configure Razorpay options
       const options = {
         key: razorpayData.keyId,
         amount: razorpayData.amount,
         currency: razorpayData.currency,
-        name: 'Your Store',
+        name: 'GroceryGlide',
         description: 'Order Payment',
         order_id: razorpayData.orderId,
         handler: async function (response: any) {
@@ -228,8 +267,11 @@ export const useCheckout = () => {
   return {
     formData,
     loading,
+    paymentMethod,
+    setPaymentMethod,
     handleInputChange,
     handleSubmit,
+    saveAddress,
     items,
     totalPrice
   };

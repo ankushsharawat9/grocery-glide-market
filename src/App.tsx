@@ -19,6 +19,10 @@ import OrderDetail from "./pages/OrderDetail";
 import OrderHistory from "./pages/OrderHistory";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
+import HelpCenter from "./pages/HelpCenter";
+import ContactUs from "./pages/ContactUs";
+import DeliveryInfo from "./pages/DeliveryInfo";
+import Returns from "./pages/Returns";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +49,10 @@ const App = () => (
               <Route path="/orders" element={<OrderHistory />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/help-center" element={<HelpCenter />} />
+              <Route path="/contact-us" element={<ContactUs />} />
+              <Route path="/delivery-info" element={<DeliveryInfo />} />
+              <Route path="/returns" element={<Returns />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

@@ -11,7 +11,17 @@ import { OrderSummary } from '@/components/checkout/OrderSummary';
 const Checkout = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { formData, loading, handleInputChange, handleSubmit, items, totalPrice } = useCheckout();
+  const { 
+    formData, 
+    loading, 
+    paymentMethod, 
+    setPaymentMethod, 
+    handleInputChange, 
+    handleSubmit, 
+    saveAddress, 
+    items, 
+    totalPrice 
+  } = useCheckout();
 
   useEffect(() => {
     if (!user) {
@@ -25,10 +35,12 @@ const Checkout = () => {
     }
   }, [user, items, navigate]);
 
+  // Convert to rupees (1 USD = 83 INR approximately)
   const subtotal = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-  const shipping = subtotal > 50 ? 0 : 5.99;
-  const tax = subtotal * 0.08; // 8% tax
-  const finalTotal = subtotal + shipping + tax;
+  const subtotalInr = subtotal * 83;
+  const shipping = subtotalInr > 500 ? 0 : 50; // Free shipping above ₹500
+  const tax = subtotalInr * 0.08; // 8% tax
+  const finalTotal = subtotalInr + shipping + tax;
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,11 +56,14 @@ const Checkout = () => {
             onSubmit={handleSubmit}
             loading={loading}
             finalTotal={finalTotal}
+            paymentMethod={paymentMethod}
+            setPaymentMethod={setPaymentMethod}
+            onSaveAddress={saveAddress}
           />
           
           <OrderSummary
             items={items}
-            subtotal={subtotal}
+            subtotal={subtotalInr}
             shipping={shipping}
             tax={tax}
             finalTotal={finalTotal}

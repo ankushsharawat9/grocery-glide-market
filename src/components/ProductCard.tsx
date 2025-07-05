@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface Product {
-  id: string; // Changed from number to string to match database
+  id: string;
   name: string;
   price: number;
   originalPrice?: number;
@@ -43,7 +43,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     try {
       console.log('Adding to cart:', { productId: product.id, quantity });
       await addToCart(product.id, quantity);
-      setQuantity(1); // Reset quantity after adding
+      setQuantity(1);
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast.error('Failed to add item to cart');
@@ -56,6 +56,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     setIsWishlisted(!isWishlisted);
     toast.success(`${isWishlisted ? 'Removed from' : 'Added to'} wishlist`);
   };
+
+  // Convert prices to rupees
+  const priceInr = product.price * 83;
+  const originalPriceInr = product.originalPrice ? product.originalPrice * 83 : null;
 
   return (
     <Card className="group hover:shadow-lg transition-shadow duration-300 relative overflow-hidden">
@@ -103,11 +107,11 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           
           <div className="flex items-center space-x-2">
             <span className="text-lg font-bold text-gray-900">
-              ${product.price}
+              ₹{priceInr.toFixed(2)}
             </span>
-            {product.originalPrice && (
+            {originalPriceInr && (
               <span className="text-sm text-gray-500 line-through">
-                ${product.originalPrice}
+                ₹{originalPriceInr.toFixed(2)}
               </span>
             )}
           </div>
