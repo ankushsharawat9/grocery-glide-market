@@ -19,7 +19,7 @@ export const FeaturedProducts = () => {
         
         if (data) {
           setFeaturedProducts(data.map(product => ({
-            id: parseInt(product.id),
+            id: product.id,
             name: product.name,
             price: product.price,
             originalPrice: product.original_price,
