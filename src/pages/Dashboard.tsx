@@ -156,7 +156,16 @@ const Dashboard = () => {
         {/* Recent Orders */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle>Recent Orders</CardTitle>
+              {orders.length > 0 && (
+                <Link to="/orders">
+                  <Button variant="outline" size="sm">
+                    View All Orders
+                  </Button>
+                </Link>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {orders.length === 0 ? (
@@ -169,7 +178,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {orders.slice(0, 5).map((order) => (
+                {orders.slice(0, 3).map((order) => (
                   <div key={order.id} className="border rounded-lg p-4">
                     <div className="flex justify-between items-center mb-2">
                       <div>
@@ -186,8 +195,15 @@ const Dashboard = () => {
                       </div>
                     </div>
                     {order.order_items && (
-                      <div className="text-sm text-gray-600">
-                        {order.order_items.length} item(s)
+                      <div className="flex justify-between items-center">
+                        <div className="text-sm text-gray-600">
+                          {order.order_items.length} item(s)
+                        </div>
+                        <Link to={`/order/${order.id}`}>
+                          <Button variant="outline" size="sm">
+                            View Details
+                          </Button>
+                        </Link>
                       </div>
                     )}
                   </div>
