@@ -7,19 +7,36 @@ import { cn } from '@/lib/utils';
 interface WishlistButtonProps {
   productId: string;
   className?: string;
+  variant?: 'default' | 'icon';
 }
 
-export const WishlistButton = ({ productId, className }: WishlistButtonProps) => {
+export const WishlistButton = ({ productId, className, variant = 'default' }: WishlistButtonProps) => {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const inWishlist = isInWishlist(productId);
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent navigation when clicked inside a Link
+    e.stopPropagation();
+    
     if (inWishlist) {
       removeFromWishlist(productId);
     } else {
       addToWishlist(productId);
     }
   };
+
+  if (variant === 'icon') {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={handleClick}
+        className={cn("h-8 w-8", className)}
+      >
+        <Heart className={cn("h-4 w-4", inWishlist && "fill-red-500 text-red-500")} />
+      </Button>
+    );
+  }
 
   return (
     <Button

@@ -2,11 +2,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Star, ShoppingCart, Plus, Minus } from 'lucide-react';
+import { Star, ShoppingCart, Plus, Minus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
+import { WishlistButton } from '@/components/WishlistButton';
 import { toast } from 'sonner';
 
 interface Product {
@@ -28,7 +29,6 @@ interface ProductCardProps {
 
 export const ProductCard = ({ product }: ProductCardProps) => {
   const [quantity, setQuantity] = useState(1);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [loading, setLoading] = useState(false);
   const { addToCart } = useCart();
   const { user } = useAuth();
@@ -52,11 +52,6 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     }
   };
 
-  const handleWishlistToggle = () => {
-    setIsWishlisted(!isWishlisted);
-    toast.success(`${isWishlisted ? 'Removed from' : 'Added to'} wishlist`);
-  };
-
   // Convert prices to rupees
   const priceInr = product.price * 83;
   const originalPriceInr = product.originalPrice ? product.originalPrice * 83 : null;
@@ -77,14 +72,13 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
           />
         </Link>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`absolute top-2 right-2 z-10 ${isWishlisted ? 'text-red-500' : 'text-gray-400'} hover:text-red-500`}
-          onClick={handleWishlistToggle}
-        >
-          <Heart className={`h-5 w-5 ${isWishlisted ? 'fill-current' : ''}`} />
-        </Button>
+        <div className="absolute top-2 right-2 z-10">
+          <WishlistButton 
+            productId={product.id} 
+            variant="icon"
+            className="bg-white/80 hover:bg-white shadow-sm" 
+          />
+        </div>
       </div>
 
       <CardContent className="p-4">
