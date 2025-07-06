@@ -138,7 +138,7 @@ const OrderDetail = () => {
         </div>
 
         <div className="max-w-4xl">
-          <OrderCard order={order} showDetails={true} />
+          <OrderCard order={order} showDetails={true} onOrderUpdate={fetchOrderDetails} />
         </div>
       </div>
       

@@ -59,11 +59,17 @@ const Dashboard = () => {
       const typedOrders: Order[] = data || [];
       setOrders(typedOrders);
       
-      // Calculate stats
+      // Calculate stats - convert to INR
       const totalOrders = typedOrders.length;
-      const pendingOrders = typedOrders.filter(order => order.status === 'pending').length;
-      const completedOrders = typedOrders.filter(order => order.status === 'paid').length;
-      const totalSpent = typedOrders.reduce((sum, order) => sum + parseFloat(String(order.total_amount) || '0'), 0);
+      const pendingOrders = typedOrders.filter(order => 
+        order.status === 'pending' || order.status === 'paid'
+      ).length;
+      const completedOrders = typedOrders.filter(order => 
+        order.status === 'delivered'
+      ).length;
+      const totalSpent = typedOrders
+        .filter(order => order.status !== 'cancelled')
+        .reduce((sum, order) => sum + parseFloat(String(order.total_amount) || '0'), 0) * 83; // Convert to INR
 
       setStats({
         totalOrders,
@@ -102,7 +108,7 @@ const Dashboard = () => {
         </div>
 
         <StatsGrid stats={stats} />
-        <RecentOrders orders={orders} />
+        <RecentOrders orders={orders} onOrderUpdate={fetchOrders} />
       </div>
       
       <Footer />

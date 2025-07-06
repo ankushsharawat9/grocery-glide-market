@@ -35,7 +35,7 @@ export const StatsGrid = ({ stats }: StatsGridProps) => {
       <StatsCard
         icon={Package}
         title="Total Spent"
-        value={`$${stats.totalSpent.toFixed(2)}`}
+        value={`₹${stats.totalSpent.toFixed(2)}`}
         iconColor="text-purple-600"
       />
     </div>

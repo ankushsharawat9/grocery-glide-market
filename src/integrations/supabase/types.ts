@@ -44,6 +44,38 @@ export type Database = {
           },
         ]
       }
+      order_cancellations: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_cancellations_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string | null
@@ -89,6 +121,8 @@ export type Database = {
       orders: {
         Row: {
           billing_address: Json | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
           created_at: string | null
           currency: string | null
           id: string
@@ -102,6 +136,8 @@ export type Database = {
         }
         Insert: {
           billing_address?: Json | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string | null
           currency?: string | null
           id?: string
@@ -115,6 +151,8 @@ export type Database = {
         }
         Update: {
           billing_address?: Json | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string | null
           currency?: string | null
           id?: string
@@ -181,33 +219,71 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           email: string | null
           first_name: string | null
+          gender: string | null
           id: string
           last_name: string | null
           phone: string | null
+          saved_addresses: Json | null
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
+          gender?: string | null
           id: string
           last_name?: string | null
           phone?: string | null
+          saved_addresses?: Json | null
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
+          gender?: string | null
           id?: string
           last_name?: string | null
           phone?: string | null
+          saved_addresses?: Json | null
           updated_at?: string | null
         }
         Relationships: []
+      }
+      wishlists: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlists_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

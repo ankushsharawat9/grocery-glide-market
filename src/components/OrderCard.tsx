@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Package, Calendar, MapPin, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { OrderCancellation } from './OrderCancellation';
 
 interface OrderItem {
   id: string;
@@ -30,9 +31,10 @@ interface Order {
 interface OrderCardProps {
   order: Order;
   showDetails?: boolean;
+  onOrderUpdate?: () => void;
 }
 
-export const OrderCard = ({ order, showDetails = false }: OrderCardProps) => {
+export const OrderCard = ({ order, showDetails = false, onOrderUpdate }: OrderCardProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid':
@@ -43,6 +45,8 @@ export const OrderCard = ({ order, showDetails = false }: OrderCardProps) => {
         return 'outline';
       case 'delivered':
         return 'default';
+      case 'cancelled':
+        return 'destructive';
       default:
         return 'secondary';
     }
@@ -56,6 +60,10 @@ export const OrderCard = ({ order, showDetails = false }: OrderCardProps) => {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const canCancelOrder = () => {
+    return order.status === 'pending' || order.status === 'paid';
   };
 
   return (
@@ -73,7 +81,7 @@ export const OrderCard = ({ order, showDetails = false }: OrderCardProps) => {
             <Badge variant={getStatusColor(order.status)} className="mb-2">
               {order.status.toUpperCase()}
             </Badge>
-            <p className="text-lg font-bold">${parseFloat(String(order.total_amount)).toFixed(2)}</p>
+            <p className="text-lg font-bold">₹{(parseFloat(String(order.total_amount)) * 83).toFixed(2)}</p>
           </div>
         </div>
       </CardHeader>
@@ -100,7 +108,7 @@ export const OrderCard = ({ order, showDetails = false }: OrderCardProps) => {
                       <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
                     </div>
                   </div>
-                  <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                  <p className="font-medium">₹{(item.price * item.quantity * 83).toFixed(2)}</p>
                 </div>
               ))}
               {!showDetails && order.order_items.length > 3 && (
@@ -147,6 +155,12 @@ export const OrderCard = ({ order, showDetails = false }: OrderCardProps) => {
                 View Details
               </Button>
             </Link>
+          )}
+          {canCancelOrder() && (
+            <OrderCancellation
+              orderId={order.id}
+              onCancelled={() => onOrderUpdate?.()}
+            />
           )}
           {order.status === 'delivered' && (
             <Button variant="outline" size="sm">

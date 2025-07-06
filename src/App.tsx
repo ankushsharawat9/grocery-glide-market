@@ -48,6 +48,7 @@ const App = () => (
               <Route path="/order/:id" element={<OrderDetail />} />
               <Route path="/orders" element={<OrderHistory />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/wishlist" element={<Wishlist />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/help-center" element={<HelpCenter />} />
               <Route path="/contact-us" element={<ContactUs />} />

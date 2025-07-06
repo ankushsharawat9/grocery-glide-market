@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { OrderCancellation } from '../OrderCancellation';
 
 interface OrderItem {
   id: string;
@@ -24,9 +25,14 @@ interface Order {
 
 interface RecentOrdersProps {
   orders: Order[];
+  onOrderUpdate?: () => void;
 }
 
-export const RecentOrders = ({ orders }: RecentOrdersProps) => {
+export const RecentOrders = ({ orders, onOrderUpdate }: RecentOrdersProps) => {
+  const canCancelOrder = (status: string) => {
+    return status === 'pending' || status === 'paid';
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -62,10 +68,10 @@ export const RecentOrders = ({ orders }: RecentOrdersProps) => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <Badge variant={order.status === 'paid' ? 'default' : 'secondary'}>
+                    <Badge variant={order.status === 'delivered' ? 'default' : 'secondary'}>
                       {order.status}
                     </Badge>
-                    <p className="font-bold mt-1">${parseFloat(String(order.total_amount)).toFixed(2)}</p>
+                    <p className="font-bold mt-1">₹{(parseFloat(String(order.total_amount)) * 83).toFixed(2)}</p>
                   </div>
                 </div>
                 {order.order_items && (
@@ -73,11 +79,19 @@ export const RecentOrders = ({ orders }: RecentOrdersProps) => {
                     <div className="text-sm text-gray-600">
                       {order.order_items.length} item(s)
                     </div>
-                    <Link to={`/order/${order.id}`}>
-                      <Button variant="outline" size="sm">
-                        View Details
-                      </Button>
-                    </Link>
+                    <div className="flex gap-2">
+                      <Link to={`/order/${order.id}`}>
+                        <Button variant="outline" size="sm">
+                          View Details
+                        </Button>
+                      </Link>
+                      {canCancelOrder(order.status) && (
+                        <OrderCancellation
+                          orderId={order.id}
+                          onCancelled={() => onOrderUpdate?.()}
+                        />
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

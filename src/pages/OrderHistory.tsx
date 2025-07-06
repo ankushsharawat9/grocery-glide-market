@@ -170,6 +170,7 @@ const OrderHistory = () => {
                     <SelectItem value="paid">Paid</SelectItem>
                     <SelectItem value="shipped">Shipped</SelectItem>
                     <SelectItem value="delivered">Delivered</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -199,7 +200,7 @@ const OrderHistory = () => {
               Showing {filteredOrders.length} of {orders.length} orders
             </p>
             {filteredOrders.map((order) => (
-              <OrderCard key={order.id} order={order} />
+              <OrderCard key={order.id} order={order} onOrderUpdate={fetchOrders} />
             ))}
           </div>
         )}
