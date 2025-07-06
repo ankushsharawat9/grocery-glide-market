@@ -187,7 +187,7 @@ const Profile = () => {
                   <Avatar className="h-24 w-24">
                     <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} />
                     <AvatarFallback className="text-lg">
-                      {formData.firstName[0]}{formData.lastName[0]}
+                      {formData.firstName?.[0] || ''}{formData.lastName?.[0] || ''}
                     </AvatarFallback>
                   </Avatar>
                   <div>

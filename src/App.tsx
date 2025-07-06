@@ -18,6 +18,7 @@ import Dashboard from "./pages/Dashboard";
 import OrderDetail from "./pages/OrderDetail";
 import OrderHistory from "./pages/OrderHistory";
 import Profile from "./pages/Profile";
+import Wishlist from "./pages/Wishlist";
 import AdminDashboard from "./pages/AdminDashboard";
 import HelpCenter from "./pages/HelpCenter";
 import ContactUs from "./pages/ContactUs";

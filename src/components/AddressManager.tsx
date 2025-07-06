@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +18,7 @@ interface Address {
   state: string;
   zipCode: string;
   phone?: string;
+  [key: string]: any; // This makes it compatible with Json type
 }
 
 interface AddressManagerProps {
@@ -62,7 +62,7 @@ export const AddressManager = ({ addresses, onUpdate }: AddressManagerProps) => 
 
       const { error } = await supabase
         .from('profiles')
-        .update({ saved_addresses: updatedAddresses })
+        .update({ saved_addresses: updatedAddresses as any })
         .eq('id', user?.id);
 
       if (error) throw error;
@@ -92,7 +92,7 @@ export const AddressManager = ({ addresses, onUpdate }: AddressManagerProps) => 
       
       const { error } = await supabase
         .from('profiles')
-        .update({ saved_addresses: updatedAddresses })
+        .update({ saved_addresses: updatedAddresses as any })
         .eq('id', user?.id);
 
       if (error) throw error;
