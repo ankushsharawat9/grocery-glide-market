@@ -14,6 +14,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Tables } from '@/integrations/supabase/types';
+import { PasswordChangeForm } from '@/components/PasswordChangeForm';
+import { EmailVerificationStatus } from '@/components/EmailVerificationStatus';
 
 interface ProfileData {
   id?: string;
@@ -198,6 +200,9 @@ const Profile = () => {
           </div>
           
           <div className="grid gap-8">
+            {/* Email Verification Status */}
+            <EmailVerificationStatus />
+
             {/* Personal Information */}
             <Card>
               <CardHeader>
@@ -336,6 +341,9 @@ const Profile = () => {
               </CardContent>
             </Card>
 
+            {/* Change Password */}
+            <PasswordChangeForm />
+
             {/* Security Settings */}
             <Card>
               <CardHeader>
@@ -344,13 +352,20 @@ const Profile = () => {
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <h4 className="font-medium mb-2">Password</h4>
+                    <h4 className="font-medium mb-2">Password Reset</h4>
                     <p className="text-sm text-gray-600 mb-3">
-                      Manage your account password
+                      Send a password reset link to your email address
                     </p>
                     <Button variant="outline" onClick={handlePasswordReset}>
-                      Reset Password
+                      Send Reset Link
                     </Button>
+                  </div>
+                  
+                  <div className="pt-4 border-t">
+                    <h4 className="font-medium mb-2">Account Security</h4>
+                    <p className="text-sm text-gray-600 mb-3">
+                      For your security, changing your email or password will log you out from all devices.
+                    </p>
                   </div>
                 </div>
               </CardContent>
