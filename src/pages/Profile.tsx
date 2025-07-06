@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router-dom';
+import type { Tables } from '@/integrations/supabase/types';
 
 interface ProfileData {
   id?: string;
@@ -56,7 +56,18 @@ const Profile = () => {
 
       if (error && error.code !== 'PGRST116') throw error;
 
-      const profileData: ProfileData = data || {};
+      // Convert the database row to our ProfileData interface
+      const profileData: ProfileData = data ? {
+        id: data.id,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        phone: data.phone,
+        gender: data.gender,
+        avatar_url: data.avatar_url,
+        saved_addresses: Array.isArray(data.saved_addresses) ? data.saved_addresses : []
+      } : {};
+      
       setProfile(profileData);
       setFormData({
         firstName: profileData.first_name || '',
