@@ -56,7 +56,7 @@ const Profile = () => {
 
       if (error && error.code !== 'PGRST116') throw error;
 
-      const profileData = data || {};
+      const profileData: ProfileData = data || {};
       setProfile(profileData);
       setFormData({
         firstName: profileData.first_name || '',
